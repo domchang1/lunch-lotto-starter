@@ -42,8 +42,39 @@ html, body {
   }
 
 
-#spin {
+/* #spin {
     font-weight: bold;
+  } */
+
+  #spin {
+    position: static;
+    width: 180px;
+    padding: 14px 0;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    transform: none;
+  }
+  
+  
+  #spin:hover {
+    background-color: #0056b3;
+  }
+  
+  
+  /* Make sure the wheel container has proper positioning */
+  #wheel-container {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto 60px auto;
+    padding-bottom: 60px; /* Add space for the button */
   }
   
 /* Style for the Settings Button */
@@ -137,14 +168,6 @@ html, body {
 
 /* background-color:rgb(61, 69, 119); */
   
-/* 🎡 Ensure `wheel-container` is positioned relative */
-#wheel-container {
-  position: relative;  /* ✅ This makes the GIF position relative to the wheel */
-  text-align: center;
-  width: 100%; /* ✅ Prevents overflow */
-  height: 310px; /* ✅ Matches wheel size */
-  overflow: hidden; /* ✅ Ensures GIF doesn't overflow */
-}
 
 /* 🔄 Loading GIF: Centered Inside the Wheel */
 #loading-gif {
@@ -260,4 +283,8 @@ html, body {
   color: #777;
   font-style: italic;
   padding: 20px;
+}
+
+#open-history {
+  padding: 12px 0;
 }

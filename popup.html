@@ -20,7 +20,7 @@
     <div id="main-view">
       <div id="wheel-container">
         <img id="loading-gif" src="assets/loading.gif" alt="Loading..." style="display: none;">
-        <canvas id="wheel" width="310" height="310"></canvas>
+        <canvas id="wheel" width="300" height="300"></canvas>
         <button id="spin">Spin</button>
       </div>
       <!-- 🏆 Selected Restaurant Result -->
@@ -31,6 +31,10 @@
       <!-- <button id="open-settings">Settings</button> -->
       <button id="open-settings">
         <img src="assets/filter.jpg" alt="Settings">
+      </button>
+
+      <button id="open-history" class="header-btn" title="View History">
+        <i class="fas fa-history">Open History</i>
       </button>
     </div>
 
@@ -52,10 +56,6 @@
       <button id="close-settings">Back</button>
     </div>
 
-    <button id="open-history" class="header-btn" title="View History">
-      <i class="fas fa-history"></i>
-    </button>
-    
     <!-- History View -->
     <div id="history-view" style="display: none;">
       <div class="view-header">
@@ -69,6 +69,7 @@
         </ul>
       </div>
     </div>
+    
   </div>
 
   <script src="libs/sweetalert.min.js"></script>

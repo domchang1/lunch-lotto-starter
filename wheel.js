@@ -189,7 +189,9 @@ function rotateWheel() {
           link.textContent = "View on OpenStreetMap"; // Updated text for the link
           link.style.color = "#a2a2a2"; // Optional: Add a color to the link
           link.style.fontSize = "10px";
-      
+          
+          console.log("Map URL:", selectedOption.mapUrl);
+          console.log("Selected Option:", selectedOption);
           content.appendChild(paragraph);
           content.appendChild(link);
       

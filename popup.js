@@ -191,7 +191,7 @@ async function fetchRestaurants() {
     // Extract restaurant names and Google Maps links, and populate options array
     options.push(...selectedRestaurants.map((restaurant) => ({
       name: restaurant.name,
-      googleMapsLink: restaurant.googleMapsLink, // Add Google Maps link
+      mapUrl: restaurant.mapUrl, 
     })));
   
     // Debugging: Log the selected restaurants with their links
@@ -200,7 +200,7 @@ async function fetchRestaurants() {
     // Store full restaurant details, including names and links
     restaurantDetails = selectedRestaurants.map((restaurant) => ({
       name: restaurant.name,
-      googleMapsLink: restaurant.googleMapsLink // Add the Google Maps link
+      mapUrl: restaurant.mapUrl 
     }));
   
     console.log("✅ Selected Restaurants for the Wheel:", restaurantDetails);
@@ -321,7 +321,17 @@ function showHistory() {
   document.querySelectorAll(".view-on-map").forEach(button => {
     button.addEventListener("click", (e) => {
       const index = e.target.getAttribute("data-index");
-      window.open(restaurantHistory[index].googleMapsLink, '_blank');
+      window.open(restaurantHistory[index].mapUrl, '_blank');
+    });
+  });
+  
+  document.querySelectorAll(".view-on-map").forEach(button => {
+    button.addEventListener("click", (e) => {
+      const index = e.target.getAttribute("data-index");
+      // Make sure to use the full URL
+      const mapUrl = restaurantHistory[index].mapUrl || 
+        `https://www.openstreetmap.org/?mlat=${restaurantHistory[index].lat}&mlon=${restaurantHistory[index].lng}&zoom=18`;
+      window.open(mapUrl, '_blank');
     });
   });
   
@@ -337,4 +347,18 @@ function showHistory() {
 function hideHistory() {
   document.getElementById("main-view").style.display = "block";
   document.getElementById("history-view").style.display = "none";
+}
+
+function addRestaurantToWheel(restaurant) {
+  if (options.length >= 8) {
+    options.pop();
+  }
+  
+  options.push({
+    name: restaurant.name,
+    mapUrl: restaurant.mapUrl
+  });
+  
+  // Redraw the wheel
+  drawWheel();
 }
