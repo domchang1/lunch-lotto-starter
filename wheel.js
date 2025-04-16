@@ -3,7 +3,6 @@ const ctx = canvas.getContext("2d");
 
 const options = ["", "", "", "", "", "", "", ""];
 const colors = ["#F69C9E", "#BCECE6", "#73D5D1", "#FFEED9"];
-// #051F20 #0B2B26 #163832 #235347 #8EB69B #DAF1DE #F2F2F2
 let startAngle = 0;
 let arc = 2 * Math.PI / options.length;
 let spinTimeout = null;
@@ -21,9 +20,6 @@ function scaleCanvas(canvas, ctx) {
     // Set the canvas width and height to the scaled dimensions
     canvas.width = width * pixelRatio;
     canvas.height = height * pixelRatio;
-  
-    // Scale the canvas context
-    // ctx.scale(pixelRatio, pixelRatio);
   
     // Restore the original canvas dimensions for CSS styling
     canvas.style.width = `${width}px`;
@@ -45,15 +41,15 @@ function isColorDark(color) {
 function truncateOption(option) {
     if (!option) {
         return "Loading..."; // Provide a fallback for empty options
-      }
+    }
 
     if (option.length > 13) {
-      return option.slice(0, 10) + "..."; // Keep the first 12 characters and add "..."
+      return option.slice(0, 10) + "..."; // Keep the first 10 characters and add "..."
     }
-    return option; // Return the original string if it's 15 characters or less
-  }  
+    return option; // Return the original string if it's 13 characters or less
+}  
   
-  function drawWheel() {
+function drawWheel() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before redrawing
   
     // Set the font size and style
@@ -95,9 +91,9 @@ function truncateOption(option) {
     // Draw the pointer and center circle
     drawPointer();
     drawCenterCircle();
-  }  
+}
 
-  function drawCenterCircle() {
+function drawCenterCircle() {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
   
@@ -119,9 +115,9 @@ function truncateOption(option) {
     ctx.lineWidth = 5; // Border width
     ctx.strokeStyle = "#fff"; // Border color
     ctx.stroke();
-  }
+}
 
-  function drawPointer() {
+function drawPointer() {
     const centerX = canvas.width / 2; // Center of the canvas
   
     // Set shadow properties for the pointer
@@ -147,9 +143,9 @@ function truncateOption(option) {
     ctx.strokeStyle = "#ffffff"; // Border color
     ctx.stroke();
     ctx.restore(); // Restore the context state to remove shadow effects for subsequent drawings
-  }  
+}  
   
-  function rotateWheel() {
+function rotateWheel() {
     spinTime += 30;
     if (spinTime >= spinTimeTotal) {
       clearTimeout(spinTimeout);
@@ -174,6 +170,9 @@ function truncateOption(option) {
       // Select a random motivational message
       const randomMessage = messages[Math.floor(Math.random() * messages.length)];
   
+      // Save selected restaurant to history
+      saveToHistory(selectedOption);
+      
       // Show result + motivational message
       swal({
         title: `Selected Option: ${selectedOption.name}`,
@@ -185,9 +184,9 @@ function truncateOption(option) {
           paragraph.style.fontSize = "12px";
           paragraph.textContent = randomMessage; // Add the motivational message
       
-          link.href = selectedOption.googleMapsLink; // Set the Google Maps link
+          link.href = selectedOption.mapUrl; // Set the OpenStreetMap link
           link.target = "_blank"; // Open the link in a new tab
-          link.textContent = "View on Google Maps"; // Text for the link
+          link.textContent = "View on OpenStreetMap"; // Updated text for the link
           link.style.color = "#a2a2a2"; // Optional: Add a color to the link
           link.style.fontSize = "10px";
       
@@ -206,21 +205,13 @@ function truncateOption(option) {
     startAngle += (spinAngleStart * Math.PI) / 180;
     drawWheel();
     spinTimeout = setTimeout(rotateWheel, 30);
-  }
-
-function finalizeWheel() {
-  const degrees = (startAngle * 180) / Math.PI + 90; // Convert radians to degrees
-  const index = Math.floor((360 - (degrees % 360)) / (360 / options.length)); // Calculate the selected segment
-  const selectedOption = options[index];
-  
-  alert(`Selected option: ${selectedOption}`); // Display the result
 }
 
 function spin() {
-  spinAngleStart = Math.random() * 10 + 10;
-  spinTime = 0;
-  spinTimeTotal = Math.random() * 3000 + 3000; // Spin duration between 3-6 seconds
-  rotateWheel();
+    spinAngleStart = Math.random() * 10 + 10;
+    spinTime = 0;
+    spinTimeTotal = Math.random() * 3000 + 3000; // Spin duration between 3-6 seconds
+    rotateWheel();
 }
 
 document.getElementById("spin").addEventListener("click", () => spin());

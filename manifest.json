@@ -4,7 +4,7 @@
     "version": "1.0",
     "description": "A fun lunch recommendation tool with healthy options!",
     "permissions": ["notifications", "storage", "alarms", "geolocation"],
-    "host_permissions": ["https://maps.googleapis.com/*"],
+    "host_permissions": ["https://overpass-api.de/*"],
     "background": {
       "service_worker": "background.js"
     },

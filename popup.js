@@ -1,4 +1,3 @@
-const apiKey = "YOUR_API_KEY";
 const defaultSettings = {
   distance: 0.5,       // Default search radius in miles
   price: "2,3",        // Google Places API uses 1-4 ($ - $$$$)
@@ -21,74 +20,164 @@ async function loadSettings() {
 }
 
 async function fetchRestaurants() {
-    try {
-      // 🔄 Show Loading GIF and Hide the Wheel
-      document.getElementById("loading-gif").style.display = "block";
-      document.getElementById("wheel").style.display = "none";
-  
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const { latitude: lat, longitude: lng } = position.coords;
-        const settings = await loadSettings();
-  
-        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${milesToMeters(settings.distance)}&type=restaurant&keyword=healthy&minprice=${settings.price[0]}&maxprice=${settings.price[2]}&key=${apiKey}`;
-  
-        const response = await fetch(url);
-        const data = await response.json();
-  
-        if (!data.results || data.results.length === 0) {
-          console.error("❌ No restaurants found!");
-          alert("No restaurants found! Try adjusting your settings.");
-          return;
+  try {
+    // Show Loading GIF and Hide the Wheel
+    document.getElementById("loading-gif").style.display = "block";
+    document.getElementById("wheel").style.display = "none";
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude: lat, longitude: lng } = position.coords;
+      const settings = await loadSettings();
+      
+      // Calculate radius in meters
+      const radius = milesToMeters(settings.distance);
+      
+      // Create Overpass API query for restaurants
+      // This searches for nodes and ways tagged as restaurants within the specified radius
+      const overpassQuery = `
+        [out:json];
+        (
+          node["amenity"="restaurant"](around:${radius},${lat},${lng});
+          way["amenity"="restaurant"](around:${radius},${lat},${lng});
+          relation["amenity"="restaurant"](around:${radius},${lat},${lng});
+        );
+        out body;
+        >;
+        out skel qt;
+      `;
+      
+      // Overpass API endpoint
+      const overpassUrl = "https://overpass-api.de/api/interpreter";
+      
+      // Use fetch to send the query
+      const response = await fetch(overpassUrl, {
+        method: 'POST',
+        body: overpassQuery,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
-  
-        // ✅ Extract restaurant data
-        let restaurants = data.results.map((place) => ({
-          name: place.name,
-          distance: (settings.distance).toFixed(1),
-          price: place.price_level ? "$".repeat(place.price_level) : "Unknown",
-          lat: place.geometry.location.lat,
-          lng: place.geometry.location.lng,
-          placeId: place.place_id,
-          googleMapsLink: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`, // Add Google Maps link
-        }));
-  
-        // ✅ Remove duplicate restaurant names
-        const seen = new Set();
-        restaurants = restaurants.filter((restaurant) => {
-          if (seen.has(restaurant.name)) {
-            return false; // Duplicate found, skip this restaurant
-          }
-          seen.add(restaurant.name);
-          return true; // Unique restaurant, keep it
-        });
-  
-        console.log("✅ Unique Restaurants fetched:", restaurants);
-  
-        // ✅ Store restaurant details globally
-        restaurantDetails = restaurants.reduce((acc, r) => {
-          acc[r.name] = r;
-          return acc;
-        }, {});
-  
-        // ⏳ Wait 5 seconds before showing the wheel
-        setTimeout(() => {
-          document.getElementById("loading-gif").style.display = "none"; // ✅ Hide Loading GIF
-          document.getElementById("wheel").style.display = "block"; // ✅ Show the wheel
-          updateWheel(restaurants); // ✅ Update the wheel with restaurant names
-        }, 2000);
-  
-      }, (error) => {
-        console.error("❌ Geolocation error:", error);
-        alert("Please enable location access to fetch restaurants.");
-        document.getElementById("loading-gif").style.display = "none"; // ✅ Hide loading GIF on error
-        document.getElementById("wheel").style.display = "block";
       });
-    } catch (error) {
-      console.error("❌ Error fetching restaurants:", error);
-      document.getElementById("loading-gif").style.display = "none"; // ✅ Hide loading GIF on error
+      
+      if (!response.ok) {
+        throw new Error(`Overpass API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.elements || data.elements.length === 0) {
+        console.error("❌ No restaurants found!");
+        alert("No restaurants found! Try adjusting your settings.");
+        document.getElementById("loading-gif").style.display = "none";
+        document.getElementById("wheel").style.display = "block";
+        return;
+      }
+      
+      // Process the results
+      // Filter for elements that are tagged as restaurants and have names
+      const restaurantElements = data.elements.filter(element => 
+        element.tags && 
+        element.tags.amenity === 'restaurant' && 
+        element.tags.name
+      );
+      
+      if (restaurantElements.length === 0) {
+        console.error("❌ No named restaurants found!");
+        alert("No restaurants found with names! Try adjusting your settings.");
+        document.getElementById("loading-gif").style.display = "none";
+        document.getElementById("wheel").style.display = "block";
+        return;
+      }
+      
+      // Extract restaurant data
+      let restaurants = restaurantElements.map(element => {
+        // For ways and relations, use the center coordinates if available
+        const elementLat = element.center ? element.center.lat : element.lat;
+        const elementLng = element.center ? element.center.lon : element.lon;
+        
+        // Estimate a price level (1-4) if "price" tag exists, otherwise use a default
+        let priceLevel = 2; // Default to mid-range
+        if (element.tags.price) {
+          // Some OSM elements use $ symbols for price ranges
+          if (element.tags.price.includes('$')) {
+            priceLevel = element.tags.price.split('$').length - 1;
+          } 
+          // Others might use numerical values
+          else if (!isNaN(element.tags.price)) {
+            priceLevel = parseInt(element.tags.price);
+          }
+          // Ensure it's within our 1-4 range
+          priceLevel = Math.min(Math.max(priceLevel, 1), 4);
+        }
+        
+        // Create a dollar sign representation of the price
+        const priceSign = "$".repeat(priceLevel);
+        
+        // Create OSM URL for the element
+        const osmId = element.id;
+        const osmType = element.type === 'node' ? 'node' : (element.type === 'way' ? 'way' : 'relation');
+        const osmUrl = `https://www.openstreetmap.org/${osmType}/${osmId}`;
+        
+        return {
+          name: element.tags.name,
+          distance: (settings.distance).toFixed(1),
+          price: priceSign,
+          lat: elementLat,
+          lng: elementLng,
+          osmId: osmId,
+          osmType: osmType,
+          // Use OSM's share URL format
+          osmUrl: osmUrl,
+          // Create a link to view on OSM
+          mapUrl: `https://www.openstreetmap.org/?mlat=${elementLat}&mlon=${elementLng}&zoom=18`
+        };
+      });
+      
+      // Filter by price if specified in settings
+      if (settings.price) {
+        const [minPrice, maxPrice] = settings.price.split(',').map(Number);
+        restaurants = restaurants.filter(restaurant => {
+          const restaurantPrice = restaurant.price.length;
+          return restaurantPrice >= minPrice && restaurantPrice <= maxPrice;
+        });
+      }
+      
+      // Remove duplicate restaurant names
+      const seen = new Set();
+      restaurants = restaurants.filter((restaurant) => {
+        if (seen.has(restaurant.name)) {
+          return false; // Duplicate found, skip this restaurant
+        }
+        seen.add(restaurant.name);
+        return true; // Unique restaurant, keep it
+      });
+      
+      console.log("✅ Unique Restaurants fetched:", restaurants);
+      
+      // Store restaurant details globally
+      restaurantDetails = restaurants.reduce((acc, r) => {
+        acc[r.name] = r;
+        return acc;
+      }, {});
+      
+      // Wait before showing the wheel
+      setTimeout(() => {
+        document.getElementById("loading-gif").style.display = "none"; // Hide Loading GIF
+        document.getElementById("wheel").style.display = "block"; // Show the wheel
+        updateWheel(restaurants); // Update the wheel with restaurant names
+      }, 2000);
+      
+    }, (error) => {
+      console.error("❌ Geolocation error:", error);
+      alert("Please enable location access to fetch restaurants.");
+      document.getElementById("loading-gif").style.display = "none"; // Hide loading GIF on error
       document.getElementById("wheel").style.display = "block";
-    }
-  }  
+    });
+  } catch (error) {
+    console.error("❌ Error fetching restaurants:", error);
+    document.getElementById("loading-gif").style.display = "none"; // Hide loading GIF on error
+    document.getElementById("wheel").style.display = "block";
+  }
+}
 
   function updateWheel(restaurants) {
     options.length = 0; // Clear the current options array
