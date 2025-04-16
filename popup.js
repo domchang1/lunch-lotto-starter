@@ -4,6 +4,8 @@ const defaultSettings = {
   price: "2,3",        // Google Places API uses 1-4 ($ - $$$$)
   dietary: "",         // Empty means no filter (future: vegetarian, gluten-free, etc.)
 };
+let restaurantHistory = [];
+
 // Convert miles to meters (Google Maps API uses meters)
 function milesToMeters(miles) {
   return miles * 1609.34;
@@ -131,6 +133,7 @@ function hideSettings() {
 
 // Ensure scripts run only after DOM is loaded
 document.addEventListener("DOMContentLoaded", async () => {
+  await loadHistory();
   await fetchRestaurants();
 
   // Spin button event
@@ -141,6 +144,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Close settings view
   document.getElementById("close-settings").addEventListener("click", hideSettings);
+
+  document.getElementById("open-history").addEventListener("click", showHistory);
+  document.getElementById("close-history").addEventListener("click", hideHistory);
 
   // Load saved settings into inputs
   const settings = await loadSettings();
@@ -166,3 +172,80 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });  
 });
+
+async function loadHistory() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get({ history: [] }, (data) => {
+      restaurantHistory = data.history;
+      resolve(restaurantHistory);
+    });
+  });
+}
+
+function saveToHistory(restaurant) {
+  const historyEntry = {
+    ...restaurant,
+    timestamp: new Date().toISOString()
+  };
+  
+  restaurantHistory.unshift(historyEntry);
+  
+  if (restaurantHistory.length > 20) {
+    restaurantHistory = restaurantHistory.slice(0, 20);
+  }
+  
+  chrome.storage.sync.set({ history: restaurantHistory });
+}
+
+function showHistory() {
+  document.getElementById("main-view").style.display = "none";
+  document.getElementById("history-view").style.display = "block";
+  
+  const historyList = document.getElementById("history-list");
+  historyList.innerHTML = ""; 
+  
+  if (restaurantHistory.length === 0) {
+    historyList.innerHTML = "<li class='no-history'>No restaurant history yet</li>";
+    return;
+  }
+  
+  restaurantHistory.forEach((entry, index) => {
+    const date = new Date(entry.timestamp);
+    const formattedDate = date.toLocaleDateString();
+    const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const li = document.createElement("li");
+    li.className = "history-item";
+    li.innerHTML = `
+      <div class="history-restaurant">
+        <span class="history-name">${entry.name}</span>
+        <span class="history-date">${formattedDate}, ${formattedTime}</span>
+      </div>
+      <div class="history-actions">
+        <button class="view-on-map" data-index="${index}">View on Map</button>
+        <button class="add-to-wheel" data-index="${index}">Add to Wheel</button>
+      </div>
+    `;
+    historyList.appendChild(li);
+  });
+  
+  document.querySelectorAll(".view-on-map").forEach(button => {
+    button.addEventListener("click", (e) => {
+      const index = e.target.getAttribute("data-index");
+      window.open(restaurantHistory[index].googleMapsLink, '_blank');
+    });
+  });
+  
+  document.querySelectorAll(".add-to-wheel").forEach(button => {
+    button.addEventListener("click", (e) => {
+      const index = e.target.getAttribute("data-index");
+      addRestaurantToWheel(restaurantHistory[index]);
+      hideHistory();
+    });
+  });
+}
+
+function hideHistory() {
+  document.getElementById("main-view").style.display = "block";
+  document.getElementById("history-view").style.display = "none";
+}
